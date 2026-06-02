@@ -29,8 +29,10 @@ public class AdminProductController {
     public Result<Page<Product>> page(@RequestParam(defaultValue = "1") long page,
                                       @RequestParam(defaultValue = "10") long size,
                                       @RequestParam(required = false) Long categoryId,
-                                      @RequestParam(required = false) String keyword) {
-        return Result.ok(productService.pageProducts(page, size, categoryId, keyword, true));
+                                      @RequestParam(required = false) String keyword,
+                                      @RequestParam(required = false) String status,
+                                      @RequestParam(required = false) String sort) {
+        return Result.ok(productService.pageProducts(page, size, categoryId, keyword, status, sort, true));
     }
 
     @PostMapping

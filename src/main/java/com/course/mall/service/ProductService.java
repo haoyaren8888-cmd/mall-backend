@@ -17,13 +17,31 @@ public class ProductService {
         this.productMapper = productMapper;
     }
 
-    public Page<Product> pageProducts(long page, long size, Long categoryId, String keyword, Boolean admin) {
+    public Page<Product> pageProducts(long page, long size, Long categoryId, String keyword, String status,
+                                      String sort, Boolean admin) {
         LambdaQueryWrapper<Product> wrapper = new LambdaQueryWrapper<Product>()
                 .eq(!Boolean.TRUE.equals(admin), Product::getStatus, "ON")
+                .eq(Boolean.TRUE.equals(admin) && StringUtils.hasText(status), Product::getStatus, status)
                 .eq(categoryId != null, Product::getCategoryId, categoryId)
-                .like(StringUtils.hasText(keyword), Product::getName, keyword)
-                .orderByDesc(Product::getCreatedAt);
+                .like(StringUtils.hasText(keyword), Product::getName, keyword);
+        applySort(wrapper, sort);
         return productMapper.selectPage(Page.of(page, size), wrapper);
+    }
+
+    private void applySort(LambdaQueryWrapper<Product> wrapper, String sort) {
+        if (!StringUtils.hasText(sort) || "newest".equals(sort)) {
+            wrapper.orderByDesc(Product::getCreatedAt);
+            return;
+        }
+        switch (sort) {
+            case "priceAsc" -> wrapper.orderByAsc(Product::getPrice);
+            case "priceDesc" -> wrapper.orderByDesc(Product::getPrice);
+            case "salesDesc" -> wrapper.orderByDesc(Product::getSales);
+            case "stockAsc" -> wrapper.orderByAsc(Product::getStock);
+            case "stockDesc" -> wrapper.orderByDesc(Product::getStock);
+            default -> wrapper.orderByDesc(Product::getCreatedAt);
+        }
+        wrapper.orderByDesc(Product::getCreatedAt);
     }
 
     public Product detail(Long id, boolean admin) {
