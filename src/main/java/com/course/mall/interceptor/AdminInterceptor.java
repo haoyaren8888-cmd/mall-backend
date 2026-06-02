@@ -5,6 +5,7 @@ import com.course.mall.common.CurrentUser;
 import com.course.mall.common.SessionKeys;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
 
@@ -12,10 +13,18 @@ import org.springframework.web.servlet.HandlerInterceptor;
 public class AdminInterceptor implements HandlerInterceptor {
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
-        CurrentUser user = (CurrentUser) request.getSession().getAttribute(SessionKeys.CURRENT_USER);
-        if (user == null || !"ADMIN".equals(user.getRole())) {
+        if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
+            return true;
+        }
+        HttpSession session = request.getSession(false);
+        CurrentUser user = session == null ? null : (CurrentUser) session.getAttribute(SessionKeys.CURRENT_USER);
+        if (!isAdmin(user)) {
             throw BusinessException.forbidden("没有后台操作权限");
         }
         return true;
+    }
+
+    private boolean isAdmin(CurrentUser user) {
+        return user != null && "ADMIN".equalsIgnoreCase(user.getRole());
     }
 }
