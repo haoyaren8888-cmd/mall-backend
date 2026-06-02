@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.course.mall.common.BusinessException;
 import com.course.mall.common.CurrentUser;
 import com.course.mall.common.SessionContext;
+import com.course.mall.dto.CartCheckedRequest;
 import com.course.mall.dto.CartItemRequest;
 import com.course.mall.dto.CartMergeRequest;
 import com.course.mall.dto.CartUpdateRequest;
@@ -16,8 +17,10 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -68,13 +71,15 @@ public class CartService {
         if (request.getQuantity() == null || request.getQuantity() <= 0) {
             throw BusinessException.badRequest("商品数量必须大于 0");
         }
-        Product product = productMapper.selectById(request.getProductId());
-        if (product == null || !"ON".equals(product.getStatus())) {
-            throw BusinessException.notFound("商品不存在或已下架");
-        }
+        Product product = requireSaleProduct(request.getProductId());
         CartItem existed = cartItemMapper.selectOne(new LambdaQueryWrapper<CartItem>()
                 .eq(CartItem::getUserId, user.getId())
                 .eq(CartItem::getProductId, request.getProductId()));
+        int nextQuantity = request.getQuantity();
+        if (existed != null) {
+            nextQuantity += existed.getQuantity();
+        }
+        ensureStock(product, nextQuantity);
         if (existed == null) {
             CartItem item = new CartItem();
             item.setUserId(user.getId());
@@ -91,16 +96,50 @@ public class CartService {
 
     public void update(Long id, CartUpdateRequest request) {
         CartItem item = requireOwnItem(id);
+        Product product = null;
         if (request.getQuantity() != null) {
             if (request.getQuantity() <= 0) {
                 throw BusinessException.badRequest("商品数量必须大于 0");
             }
+            product = requireSaleProduct(item.getProductId());
+            ensureStock(product, request.getQuantity());
             item.setQuantity(request.getQuantity());
         }
         if (request.getChecked() != null) {
+            if (request.getChecked()) {
+                product = product == null ? requireSaleProduct(item.getProductId()) : product;
+                ensureStock(product, item.getQuantity());
+            }
             item.setChecked(request.getChecked());
         }
         cartItemMapper.updateById(item);
+    }
+
+    public void checked(CartCheckedRequest request) {
+        if (request.getChecked() == null) {
+            throw BusinessException.badRequest("请选择购物车勾选状态");
+        }
+        Long userId = SessionContext.requireUser().getId();
+        List<Long> ids = request.getIds() == null ? List.of() : request.getIds();
+        LambdaQueryWrapper<CartItem> wrapper = new LambdaQueryWrapper<CartItem>()
+                .eq(CartItem::getUserId, userId);
+        if (!ids.isEmpty()) {
+            wrapper.in(CartItem::getId, ids);
+        }
+        List<CartItem> items = cartItemMapper.selectList(wrapper);
+        if (!ids.isEmpty()) {
+            Set<Long> uniqueIds = new HashSet<>(ids);
+            if (items.size() != uniqueIds.size()) {
+                throw BusinessException.notFound("购物车商品不存在");
+            }
+        }
+        if (request.getChecked()) {
+            validateItemsStock(items);
+        }
+        for (CartItem item : items) {
+            item.setChecked(request.getChecked());
+            cartItemMapper.updateById(item);
+        }
     }
 
     public void delete(Long id) {
@@ -124,5 +163,36 @@ public class CartService {
             throw BusinessException.notFound("购物车商品不存在");
         }
         return item;
+    }
+
+    private Product requireSaleProduct(Long productId) {
+        Product product = productMapper.selectById(productId);
+        if (product == null || !"ON".equals(product.getStatus())) {
+            throw BusinessException.notFound("商品不存在或已下架");
+        }
+        return product;
+    }
+
+    private void validateItemsStock(List<CartItem> items) {
+        if (items.isEmpty()) {
+            return;
+        }
+        List<Long> productIds = items.stream().map(CartItem::getProductId).distinct().toList();
+        Map<Long, Product> products = productMapper.selectBatchIds(productIds).stream()
+                .collect(Collectors.toMap(Product::getId, Function.identity()));
+        for (CartItem item : items) {
+            Product product = products.get(item.getProductId());
+            if (product == null || !"ON".equals(product.getStatus())) {
+                throw BusinessException.notFound("商品不存在或已下架");
+            }
+            ensureStock(product, item.getQuantity());
+        }
+    }
+
+    private void ensureStock(Product product, int quantity) {
+        int stock = product.getStock() == null ? 0 : product.getStock();
+        if (quantity > stock) {
+            throw BusinessException.badRequest(product.getName() + " 库存不足");
+        }
     }
 }

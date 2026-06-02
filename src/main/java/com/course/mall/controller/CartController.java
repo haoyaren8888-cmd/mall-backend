@@ -1,6 +1,7 @@
 package com.course.mall.controller;
 
 import com.course.mall.common.Result;
+import com.course.mall.dto.CartCheckedRequest;
 import com.course.mall.dto.CartItemRequest;
 import com.course.mall.dto.CartMergeRequest;
 import com.course.mall.dto.CartUpdateRequest;
@@ -35,6 +36,12 @@ public class CartController {
     @PostMapping("/items")
     public Result<Void> add(@Valid @RequestBody CartItemRequest request) {
         cartService.add(request);
+        return Result.ok();
+    }
+
+    @PutMapping("/items/checked")
+    public Result<Void> checked(@RequestBody CartCheckedRequest request) {
+        cartService.checked(request);
         return Result.ok();
     }
 
