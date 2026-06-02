@@ -147,24 +147,35 @@ public class OrderService {
         if (order == null) {
             throw BusinessException.notFound("订单不存在");
         }
-        if (!"PENDING_PAY".equals(order.getStatus())) {
-            throw BusinessException.badRequest("订单当前状态不能支付");
-        }
+        requirePayableOrder(order);
         LocalDateTime now = LocalDateTime.now();
-        PaymentRecord record = new PaymentRecord();
-        record.setOrderId(order.getId());
-        record.setOrderNo(order.getOrderNo());
-        record.setPayNo("PAY" + UUID.randomUUID().toString().replace("-", "").substring(0, 20));
-        record.setAmount(order.getTotalAmount());
-        record.setStatus("SUCCESS");
-        record.setPayType("MOCK");
-        record.setPaidAt(now);
-        paymentRecordMapper.insert(record);
+        paymentRecordMapper.insert(buildMockPaymentRecord(order, now));
 
         order.setStatus("PAID");
         order.setPaidAt(now);
         orderMapper.updateById(order);
         return toVO(order);
+    }
+
+    private void requirePayableOrder(Order order) {
+        if (!"PENDING_PAY".equals(order.getStatus())) {
+            throw BusinessException.badRequest("订单当前状态不能支付");
+        }
+        if (order.getTotalAmount() == null || order.getTotalAmount().compareTo(BigDecimal.ZERO) <= 0) {
+            throw BusinessException.badRequest("订单金额异常");
+        }
+    }
+
+    private PaymentRecord buildMockPaymentRecord(Order order, LocalDateTime paidAt) {
+        PaymentRecord record = new PaymentRecord();
+        record.setOrderId(order.getId());
+        record.setOrderNo(order.getOrderNo());
+        record.setPayNo(generatePayNo());
+        record.setAmount(order.getTotalAmount());
+        record.setStatus("SUCCESS");
+        record.setPayType("MOCK");
+        record.setPaidAt(paidAt);
+        return record;
     }
 
     public Page<OrderVO> adminList(long page, long size, String status, String orderNo) {
@@ -249,5 +260,9 @@ public class OrderService {
     private String generateOrderNo() {
         return "M" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")) +
                 UUID.randomUUID().toString().replace("-", "").substring(0, 6).toUpperCase();
+    }
+
+    private String generatePayNo() {
+        return "PAY" + UUID.randomUUID().toString().replace("-", "").substring(0, 20);
     }
 }
