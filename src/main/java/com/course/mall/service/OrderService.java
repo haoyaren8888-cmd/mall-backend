@@ -73,14 +73,10 @@ public class OrderService {
 
         BigDecimal total = BigDecimal.ZERO;
         for (CartItem cartItem : checkedItems) {
+            int quantity = requireCartQuantity(cartItem);
             Product product = productMapper.selectById(cartItem.getProductId());
-            if (product == null || !"ON".equals(product.getStatus())) {
-                throw BusinessException.badRequest("商品已下架，无法下单");
-            }
-            if (product.getStock() < cartItem.getQuantity()) {
-                throw BusinessException.badRequest(product.getName() + " 库存不足");
-            }
-            BigDecimal subtotal = product.getPrice().multiply(BigDecimal.valueOf(cartItem.getQuantity()));
+            ensureProductCanOrder(product, quantity);
+            BigDecimal subtotal = product.getPrice().multiply(BigDecimal.valueOf(quantity));
             total = total.add(subtotal);
 
             OrderItem orderItem = new OrderItem();
@@ -89,12 +85,12 @@ public class OrderService {
             orderItem.setProductName(product.getName());
             orderItem.setProductImage(product.getCoverImage());
             orderItem.setPrice(product.getPrice());
-            orderItem.setQuantity(cartItem.getQuantity());
+            orderItem.setQuantity(quantity);
             orderItem.setSubtotal(subtotal);
             orderItemMapper.insert(orderItem);
 
-            product.setStock(product.getStock() - cartItem.getQuantity());
-            product.setSales(product.getSales() + cartItem.getQuantity());
+            product.setStock(stockOf(product) - quantity);
+            product.setSales(salesOf(product) + quantity);
             productMapper.updateById(product);
         }
         order.setTotalAmount(total);
@@ -201,11 +197,37 @@ public class OrderService {
         for (OrderItem item : items) {
             Product product = productMapper.selectById(item.getProductId());
             if (product != null) {
-                product.setStock(product.getStock() + item.getQuantity());
-                product.setSales(Math.max(0, product.getSales() - item.getQuantity()));
+                int quantity = item.getQuantity() == null ? 0 : item.getQuantity();
+                product.setStock(stockOf(product) + quantity);
+                product.setSales(Math.max(0, salesOf(product) - quantity));
                 productMapper.updateById(product);
             }
         }
+    }
+
+    private int requireCartQuantity(CartItem cartItem) {
+        Integer quantity = cartItem.getQuantity();
+        if (quantity == null || quantity <= 0) {
+            throw BusinessException.badRequest("商品数量必须大于 0");
+        }
+        return quantity;
+    }
+
+    private void ensureProductCanOrder(Product product, int quantity) {
+        if (product == null || !"ON".equals(product.getStatus())) {
+            throw BusinessException.badRequest("商品已下架，无法下单");
+        }
+        if (quantity > stockOf(product)) {
+            throw BusinessException.badRequest(product.getName() + " 库存不足");
+        }
+    }
+
+    private int stockOf(Product product) {
+        return product.getStock() == null ? 0 : product.getStock();
+    }
+
+    private int salesOf(Product product) {
+        return product.getSales() == null ? 0 : product.getSales();
     }
 
     private OrderVO toVO(Order order) {
