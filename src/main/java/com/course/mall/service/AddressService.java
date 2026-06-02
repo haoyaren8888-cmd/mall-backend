@@ -7,6 +7,7 @@ import com.course.mall.dto.AddressRequest;
 import com.course.mall.entity.Address;
 import com.course.mall.mapper.AddressMapper;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -26,9 +27,10 @@ public class AddressService {
                 .orderByDesc(Address::getUpdatedAt));
     }
 
+    @Transactional
     public Address create(AddressRequest request) {
         Long userId = SessionContext.requireUser().getId();
-        if (Boolean.TRUE.equals(request.getDefaultAddress()) || list().isEmpty()) {
+        if (Boolean.TRUE.equals(request.getDefaultAddress()) || !hasAddress(userId)) {
             clearDefault(userId);
             request.setDefaultAddress(true);
         }
@@ -39,6 +41,7 @@ public class AddressService {
         return address;
     }
 
+    @Transactional
     public Address update(Long id, AddressRequest request) {
         Address address = requireOwnAddress(id);
         if (Boolean.TRUE.equals(request.getDefaultAddress())) {
@@ -46,14 +49,20 @@ public class AddressService {
         }
         fill(address, request);
         addressMapper.updateById(address);
+        ensureDefaultAddress(address.getUserId());
         return address;
     }
 
+    @Transactional
     public void delete(Long id) {
-        requireOwnAddress(id);
+        Address address = requireOwnAddress(id);
         addressMapper.deleteById(id);
+        if (Boolean.TRUE.equals(address.getDefaultAddress())) {
+            ensureDefaultAddress(address.getUserId());
+        }
     }
 
+    @Transactional
     public void setDefault(Long id) {
         Address address = requireOwnAddress(id);
         clearDefault(address.getUserId());
@@ -78,6 +87,30 @@ public class AddressService {
             address.setDefaultAddress(false);
             addressMapper.updateById(address);
         }
+    }
+
+    private boolean hasAddress(Long userId) {
+        return addressMapper.selectCount(new LambdaQueryWrapper<Address>()
+                .eq(Address::getUserId, userId)) > 0;
+    }
+
+    private void ensureDefaultAddress(Long userId) {
+        Long defaultCount = addressMapper.selectCount(new LambdaQueryWrapper<Address>()
+                .eq(Address::getUserId, userId)
+                .eq(Address::getDefaultAddress, true));
+        if (defaultCount > 0) {
+            return;
+        }
+        List<Address> addresses = addressMapper.selectList(new LambdaQueryWrapper<Address>()
+                .eq(Address::getUserId, userId)
+                .orderByDesc(Address::getUpdatedAt)
+                .orderByDesc(Address::getId));
+        if (addresses.isEmpty()) {
+            return;
+        }
+        Address address = addresses.get(0);
+        address.setDefaultAddress(true);
+        addressMapper.updateById(address);
     }
 
     private void fill(Address address, AddressRequest request) {
