@@ -1,0 +1,33 @@
+server:
+  port: 8080
+  servlet:
+    session:
+      cookie:
+        same-site: lax
+    encoding:
+      charset: UTF-8
+      force: true
+
+spring:
+  application:
+    name: mall-backend
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: ${MYSQL_URL:jdbc:mysql://127.0.0.1:3306/mall?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai}
+    username: ${MYSQL_USERNAME:root}
+    password: ${MYSQL_PASSWORD:admin}
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: Asia/Shanghai
+
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+  global-config:
+    db-config:
+      logic-delete-field: deleted
+      id-type: auto
+
+logging:
+  level:
+    com.course.mall.mapper: debug
