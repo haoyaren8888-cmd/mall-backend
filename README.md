@@ -10,7 +10,7 @@ Spring Boot + Spring MVC + MyBatis-Plus + MySQL。
 mysql -uroot -p < mall.sql
 ```
 
-2. 数据库默认连接为 `root / admin`。如果本机密码不同，可以直接设置环境变量。
+2. 数据库默认连接为 `root / 123456`。如果本机密码不同，可以直接设置环境变量。
 
 PowerShell：
 
