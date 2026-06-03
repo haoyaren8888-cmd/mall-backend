@@ -15,7 +15,7 @@
     <artifactId>mall-backend</artifactId>
     <version>1.0.0</version>
     <name>mall-backend</name>
-    <description>综合网上购物商城后端</description>
+    <description>太原理工大学校园闲置商城后端</description>
 
     <properties>
         <java.version>21</java.version>
