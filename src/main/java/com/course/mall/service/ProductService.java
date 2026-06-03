@@ -157,7 +157,9 @@ public class ProductService {
     private void fill(Product product, ProductRequest request) {
         validatePrice(request.getPrice());
         product.setCategoryId(request.getCategoryId());
-        product.setSellerId(request.getSellerId());
+        if (request.getSellerId() != null) {
+            product.setSellerId(request.getSellerId());
+        }
         product.setName(request.getName());
         product.setDescription(request.getDescription());
         product.setPrice(request.getPrice());
