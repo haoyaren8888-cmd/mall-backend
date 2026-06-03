@@ -11,4 +11,8 @@ public class RegisterRequest {
     private String password;
     private String nickname;
     private String phone;
+    private String studentNo;
+    private String campus;
+    private String college;
+    private String dormitory;
 }

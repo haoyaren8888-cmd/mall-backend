@@ -16,8 +16,14 @@ public class User {
     private String password;
     private String nickname;
     private String phone;
+    private String studentNo;
+    private String campus;
+    private String college;
+    private String dormitory;
     private String role;
     private String status;
+    private Integer creditScore;
+    private Integer dealCount;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

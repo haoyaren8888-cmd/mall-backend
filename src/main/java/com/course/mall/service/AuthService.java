@@ -27,13 +27,26 @@ public class AuthService {
         if (count > 0) {
             throw BusinessException.badRequest("用户名已存在");
         }
+        if (StringUtils.hasText(request.getStudentNo())) {
+            Long studentCount = userMapper.selectCount(new LambdaQueryWrapper<User>()
+                    .eq(User::getStudentNo, request.getStudentNo()));
+            if (studentCount > 0) {
+                throw BusinessException.badRequest("学号已被注册");
+            }
+        }
         User user = new User();
         user.setUsername(request.getUsername());
         user.setPassword(request.getPassword());
         user.setNickname(StringUtils.hasText(request.getNickname()) ? request.getNickname() : request.getUsername());
         user.setPhone(request.getPhone());
+        user.setStudentNo(request.getStudentNo());
+        user.setCampus(request.getCampus());
+        user.setCollege(request.getCollege());
+        user.setDormitory(request.getDormitory());
         user.setRole("USER");
         user.setStatus("ENABLED");
+        user.setCreditScore(100);
+        user.setDealCount(0);
         userMapper.insert(user);
         return UserVO.from(user);
     }
