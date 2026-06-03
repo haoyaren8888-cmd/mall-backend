@@ -117,7 +117,7 @@ public class CartService {
 
     public void checked(CartCheckedRequest request) {
         if (request.getChecked() == null) {
-            throw BusinessException.badRequest("请选择购物车勾选状态");
+            throw BusinessException.badRequest("请选择意向清单勾选状态");
         }
         Long userId = SessionContext.requireUser().getId();
         List<Long> ids = request.getIds() == null ? List.of() : request.getIds();
@@ -130,7 +130,7 @@ public class CartService {
         if (!ids.isEmpty()) {
             Set<Long> uniqueIds = new HashSet<>(ids);
             if (items.size() != uniqueIds.size()) {
-                throw BusinessException.notFound("购物车商品不存在");
+                throw BusinessException.notFound("意向清单商品不存在");
             }
         }
         if (request.getChecked()) {
@@ -160,7 +160,7 @@ public class CartService {
         Long userId = SessionContext.requireUser().getId();
         CartItem item = cartItemMapper.selectById(id);
         if (item == null || !userId.equals(item.getUserId())) {
-            throw BusinessException.notFound("购物车商品不存在");
+            throw BusinessException.notFound("意向清单商品不存在");
         }
         return item;
     }

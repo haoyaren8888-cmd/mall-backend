@@ -53,7 +53,7 @@ public class OrderService {
         Long userId = SessionContext.requireUser().getId();
         Address address = addressMapper.selectById(request.getAddressId());
         if (address == null || !userId.equals(address.getUserId())) {
-            throw BusinessException.badRequest("请选择有效的收货地址");
+            throw BusinessException.badRequest("请选择有效的联系地址");
         }
         List<CartItem> checkedItems = cartItemMapper.selectList(new LambdaQueryWrapper<CartItem>()
                 .eq(CartItem::getUserId, userId)
@@ -195,7 +195,7 @@ public class OrderService {
             throw BusinessException.notFound("订单不存在");
         }
         if (!"PAID".equals(order.getStatus())) {
-            throw BusinessException.badRequest("只有已支付订单可以发货");
+            throw BusinessException.badRequest("只有已支付交易可以交付");
         }
         order.setStatus("SHIPPED");
         orderMapper.updateById(order);

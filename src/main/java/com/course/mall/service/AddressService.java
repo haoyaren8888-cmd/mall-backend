@@ -74,7 +74,7 @@ public class AddressService {
         Long userId = SessionContext.requireUser().getId();
         Address address = addressMapper.selectById(id);
         if (address == null || !userId.equals(address.getUserId())) {
-            throw BusinessException.notFound("收货地址不存在");
+            throw BusinessException.notFound("联系地址不存在");
         }
         return address;
     }
