@@ -5,6 +5,7 @@ import com.course.mall.common.BusinessException;
 import com.course.mall.common.CurrentUser;
 import com.course.mall.common.SessionKeys;
 import com.course.mall.dto.LoginRequest;
+import com.course.mall.dto.PasswordUpdateRequest;
 import com.course.mall.dto.ProfileUpdateRequest;
 import com.course.mall.dto.RegisterRequest;
 import com.course.mall.entity.User;
@@ -103,6 +104,25 @@ public class AuthService {
         CurrentUser updatedUser = new CurrentUser(user.getId(), user.getUsername(), user.getNickname(), user.getRole());
         session.setAttribute(SessionKeys.CURRENT_USER, updatedUser);
         return UserVO.from(user);
+    }
+
+    public void updatePassword(CurrentUser currentUser, PasswordUpdateRequest request) {
+        User user = userMapper.selectById(currentUser.getId());
+        if (user == null) {
+            throw BusinessException.unauthorized("登录状态失效");
+        }
+
+        String oldPassword = request.getOldPassword() == null ? "" : request.getOldPassword();
+        String newPassword = request.getNewPassword() == null ? "" : request.getNewPassword().trim();
+        if (!user.getPassword().equals(oldPassword)) {
+            throw BusinessException.badRequest("原密码不正确");
+        }
+        if (user.getPassword().equals(newPassword)) {
+            throw BusinessException.badRequest("新密码不能和原密码相同");
+        }
+
+        user.setPassword(newPassword);
+        userMapper.updateById(user);
     }
 
     private String clean(String value) {

@@ -4,6 +4,7 @@ import com.course.mall.common.CurrentUser;
 import com.course.mall.common.Result;
 import com.course.mall.common.SessionContext;
 import com.course.mall.dto.LoginRequest;
+import com.course.mall.dto.PasswordUpdateRequest;
 import com.course.mall.dto.ProfileUpdateRequest;
 import com.course.mall.dto.RegisterRequest;
 import com.course.mall.service.AuthService;
@@ -52,5 +53,12 @@ public class AuthController {
     public Result<UserVO> updateProfile(@Valid @RequestBody ProfileUpdateRequest request, HttpSession session) {
         CurrentUser user = SessionContext.requireUser();
         return Result.ok(authService.updateProfile(user, request, session));
+    }
+
+    @PutMapping("/password")
+    public Result<Void> updatePassword(@Valid @RequestBody PasswordUpdateRequest request) {
+        CurrentUser user = SessionContext.requireUser();
+        authService.updatePassword(user, request);
+        return Result.ok();
     }
 }

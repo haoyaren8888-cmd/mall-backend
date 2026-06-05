@@ -3,6 +3,7 @@ package com.course.mall.service;
 import com.course.mall.common.BusinessException;
 import com.course.mall.common.CurrentUser;
 import com.course.mall.common.SessionKeys;
+import com.course.mall.dto.PasswordUpdateRequest;
 import com.course.mall.dto.ProfileUpdateRequest;
 import com.course.mall.entity.User;
 import com.course.mall.mapper.UserMapper;
@@ -27,6 +28,46 @@ class AuthServiceTest {
     private UserMapper userMapper;
     @Mock
     private HttpSession session;
+
+    @Test
+    void updatePasswordSavesNewPassword() {
+        AuthService service = new AuthService(userMapper);
+        User user = user();
+        user.setPassword("123456");
+        when(userMapper.selectById(10L)).thenReturn(user);
+
+        service.updatePassword(currentUser(), passwordRequest("123456", "abcdef"));
+
+        ArgumentCaptor<User> userCaptor = ArgumentCaptor.forClass(User.class);
+        verify(userMapper).updateById(userCaptor.capture());
+        assertThat(userCaptor.getValue().getPassword()).isEqualTo("abcdef");
+    }
+
+    @Test
+    void updatePasswordRejectsWrongOldPassword() {
+        AuthService service = new AuthService(userMapper);
+        User user = user();
+        user.setPassword("123456");
+        when(userMapper.selectById(10L)).thenReturn(user);
+
+        assertThatThrownBy(() -> service.updatePassword(currentUser(), passwordRequest("wrong", "abcdef")))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("原密码不正确");
+        verify(userMapper, never()).updateById(any(User.class));
+    }
+
+    @Test
+    void updatePasswordRejectsSamePassword() {
+        AuthService service = new AuthService(userMapper);
+        User user = user();
+        user.setPassword("123456");
+        when(userMapper.selectById(10L)).thenReturn(user);
+
+        assertThatThrownBy(() -> service.updatePassword(currentUser(), passwordRequest("123456", "123456")))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("新密码不能和原密码相同");
+        verify(userMapper, never()).updateById(any(User.class));
+    }
 
     @Test
     void updateProfileSavesUserAndRefreshesSession() {
@@ -85,6 +126,13 @@ class AuthServiceTest {
         request.setCampus(" 明向校区 ");
         request.setCollege(" 计算机科学与技术学院 ");
         request.setDormitory(" 明向1号楼 ");
+        return request;
+    }
+
+    private PasswordUpdateRequest passwordRequest(String oldPassword, String newPassword) {
+        PasswordUpdateRequest request = new PasswordUpdateRequest();
+        request.setOldPassword(oldPassword);
+        request.setNewPassword(newPassword);
         return request;
     }
 
