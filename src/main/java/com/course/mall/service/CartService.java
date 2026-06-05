@@ -72,6 +72,7 @@ public class CartService {
             throw BusinessException.badRequest("商品数量必须大于 0");
         }
         Product product = requireSaleProduct(request.getProductId());
+        ensureNotOwnProduct(product, user.getId());
         CartItem existed = cartItemMapper.selectOne(new LambdaQueryWrapper<CartItem>()
                 .eq(CartItem::getUserId, user.getId())
                 .eq(CartItem::getProductId, request.getProductId()));
@@ -95,6 +96,7 @@ public class CartService {
     }
 
     public void update(Long id, CartUpdateRequest request) {
+        Long userId = SessionContext.requireUser().getId();
         CartItem item = requireOwnItem(id);
         Product product = null;
         if (request.getQuantity() != null) {
@@ -102,12 +104,14 @@ public class CartService {
                 throw BusinessException.badRequest("商品数量必须大于 0");
             }
             product = requireSaleProduct(item.getProductId());
+            ensureNotOwnProduct(product, userId);
             ensureStock(product, request.getQuantity());
             item.setQuantity(request.getQuantity());
         }
         if (request.getChecked() != null) {
             if (request.getChecked()) {
                 product = product == null ? requireSaleProduct(item.getProductId()) : product;
+                ensureNotOwnProduct(product, userId);
                 ensureStock(product, item.getQuantity());
             }
             item.setChecked(request.getChecked());
@@ -134,7 +138,7 @@ public class CartService {
             }
         }
         if (request.getChecked()) {
-            validateItemsStock(items);
+            validateItemsStock(items, userId);
         }
         for (CartItem item : items) {
             item.setChecked(request.getChecked());
@@ -173,7 +177,7 @@ public class CartService {
         return product;
     }
 
-    private void validateItemsStock(List<CartItem> items) {
+    private void validateItemsStock(List<CartItem> items, Long userId) {
         if (items.isEmpty()) {
             return;
         }
@@ -185,7 +189,14 @@ public class CartService {
             if (product == null || !"ON".equals(product.getStatus())) {
                 throw BusinessException.notFound("商品不存在或已下架");
             }
+            ensureNotOwnProduct(product, userId);
             ensureStock(product, item.getQuantity());
+        }
+    }
+
+    private void ensureNotOwnProduct(Product product, Long userId) {
+        if (userId != null && userId.equals(product.getSellerId())) {
+            throw BusinessException.badRequest("不能购买自己发布的闲置商品");
         }
     }
 

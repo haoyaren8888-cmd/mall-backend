@@ -75,7 +75,7 @@ public class OrderService {
         for (CartItem cartItem : checkedItems) {
             int quantity = requireCartQuantity(cartItem);
             Product product = productMapper.selectById(cartItem.getProductId());
-            ensureProductCanOrder(product, quantity);
+            ensureProductCanOrder(product, quantity, userId);
             BigDecimal subtotal = product.getPrice().multiply(BigDecimal.valueOf(quantity));
             total = total.add(subtotal);
 
@@ -257,9 +257,12 @@ public class OrderService {
         return quantity;
     }
 
-    private void ensureProductCanOrder(Product product, int quantity) {
+    private void ensureProductCanOrder(Product product, int quantity, Long userId) {
         if (product == null || !"ON".equals(product.getStatus())) {
             throw BusinessException.badRequest("商品已下架，无法下单");
+        }
+        if (userId != null && userId.equals(product.getSellerId())) {
+            throw BusinessException.badRequest("不能购买自己发布的闲置商品");
         }
         if (quantity > stockOf(product)) {
             throw BusinessException.badRequest(product.getName() + " 库存不足");

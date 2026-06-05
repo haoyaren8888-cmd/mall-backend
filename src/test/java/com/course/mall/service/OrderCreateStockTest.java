@@ -1,5 +1,6 @@
 package com.course.mall.service;
 
+import com.course.mall.common.BusinessException;
 import com.course.mall.common.CurrentUser;
 import com.course.mall.common.SessionKeys;
 import com.course.mall.dto.OrderCreateRequest;
@@ -32,8 +33,10 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -101,6 +104,32 @@ class OrderCreateStockTest {
         ArgumentCaptor<Order> orderCaptor = ArgumentCaptor.forClass(Order.class);
         verify(orderMapper).updateById(orderCaptor.capture());
         assertThat(orderCaptor.getValue().getTotalAmount()).isEqualByComparingTo("199.80");
+    }
+
+    @Test
+    void createRejectsOwnProductInCheckedCart() {
+        loginAsUser(10L);
+        OrderService orderService = new OrderService(
+                orderMapper, orderItemMapper, cartItemMapper, productMapper, addressMapper, paymentRecordMapper);
+
+        Address address = address(20L, 10L);
+        CartItem cartItem = cartItem(11L, 30L, 1);
+        Product product = product(30L, 1, 0);
+        product.setSellerId(10L);
+
+        when(addressMapper.selectById(20L)).thenReturn(address);
+        when(cartItemMapper.selectList(any())).thenReturn(List.of(cartItem));
+        when(productMapper.selectById(30L)).thenReturn(product);
+
+        OrderCreateRequest request = new OrderCreateRequest();
+        request.setAddressId(20L);
+
+        assertThatThrownBy(() -> orderService.create(request))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("不能购买自己发布的闲置商品");
+        verify(orderItemMapper, never()).insert(any(OrderItem.class));
+        verify(productMapper, never()).updateById(any(Product.class));
+        verify(cartItemMapper, never()).deleteBatchIds(any());
     }
 
     private void loginAsUser(Long userId) {
