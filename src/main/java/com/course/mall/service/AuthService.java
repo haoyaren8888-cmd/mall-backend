@@ -5,6 +5,7 @@ import com.course.mall.common.BusinessException;
 import com.course.mall.common.CurrentUser;
 import com.course.mall.common.SessionKeys;
 import com.course.mall.dto.LoginRequest;
+import com.course.mall.dto.ProfileUpdateRequest;
 import com.course.mall.dto.RegisterRequest;
 import com.course.mall.entity.User;
 import com.course.mall.mapper.UserMapper;
@@ -72,5 +73,42 @@ public class AuthService {
             throw BusinessException.unauthorized("登录状态失效");
         }
         return UserVO.from(user);
+    }
+
+    public UserVO updateProfile(CurrentUser currentUser, ProfileUpdateRequest request, HttpSession session) {
+        User user = userMapper.selectById(currentUser.getId());
+        if (user == null) {
+            throw BusinessException.unauthorized("登录状态失效");
+        }
+
+        String studentNo = clean(request.getStudentNo());
+        if (StringUtils.hasText(studentNo)) {
+            Long studentCount = userMapper.selectCount(new LambdaQueryWrapper<User>()
+                    .eq(User::getStudentNo, studentNo)
+                    .ne(User::getId, user.getId()));
+            if (studentCount > 0) {
+                throw BusinessException.badRequest("学号已被其他用户使用");
+            }
+        }
+
+        String nickname = clean(request.getNickname());
+        user.setNickname(StringUtils.hasText(nickname) ? nickname : user.getUsername());
+        user.setPhone(clean(request.getPhone()));
+        user.setStudentNo(studentNo);
+        user.setCampus(clean(request.getCampus()));
+        user.setCollege(clean(request.getCollege()));
+        user.setDormitory(clean(request.getDormitory()));
+        userMapper.updateById(user);
+
+        CurrentUser updatedUser = new CurrentUser(user.getId(), user.getUsername(), user.getNickname(), user.getRole());
+        session.setAttribute(SessionKeys.CURRENT_USER, updatedUser);
+        return UserVO.from(user);
+    }
+
+    private String clean(String value) {
+        if (!StringUtils.hasText(value)) {
+            return null;
+        }
+        return value.trim();
     }
 }
