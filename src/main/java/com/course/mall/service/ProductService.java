@@ -101,6 +101,14 @@ public class ProductService {
         return productMapper.selectPage(Page.of(page, size), wrapper);
     }
 
+    public Product detailMine(CurrentUser currentUser, Long id) {
+        Product product = requireProduct(id);
+        if (!currentUser.getId().equals(product.getSellerId())) {
+            throw BusinessException.forbidden("只能查看自己发布的闲置商品");
+        }
+        return product;
+    }
+
     public Product updateMine(CurrentUser currentUser, Long id, ProductRequest request) {
         Product product = requireProduct(id);
         if (!currentUser.getId().equals(product.getSellerId())) {

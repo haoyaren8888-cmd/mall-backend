@@ -95,6 +95,33 @@ class ProductPublishAuditTest {
     }
 
     @Test
+    void sellerCanLoadOwnProductForEditing() {
+        ProductService productService = new ProductService(productMapper);
+        Product product = existingProduct();
+        product.setAuditStatus("PENDING");
+
+        when(productMapper.selectById(5L)).thenReturn(product);
+
+        Product detail = productService.detailMine(new CurrentUser(18L, "seller", "seller", "USER"), 5L);
+
+        assertThat(detail).isSameAs(product);
+        assertThat(detail.getAuditStatus()).isEqualTo("PENDING");
+    }
+
+    @Test
+    void sellerCannotLoadOtherSellerProductForEditing() {
+        ProductService productService = new ProductService(productMapper);
+        Product product = existingProduct();
+
+        when(productMapper.selectById(5L)).thenReturn(product);
+
+        assertThatThrownBy(() ->
+                productService.detailMine(new CurrentUser(20L, "other", "other", "USER"), 5L))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("只能查看自己发布的闲置商品");
+    }
+
+    @Test
     void approveClearsRejectReasonAndMakesProductVisible() {
         ProductService productService = new ProductService(productMapper);
         Product product = existingProduct();

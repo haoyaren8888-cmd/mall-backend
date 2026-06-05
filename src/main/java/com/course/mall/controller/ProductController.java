@@ -67,6 +67,12 @@ public class ProductController {
         return Result.ok(favoriteService.pageFavorites(currentUser, page, size));
     }
 
+    @GetMapping("/mine/{id}")
+    public Result<Product> mineDetail(@PathVariable Long id) {
+        CurrentUser currentUser = SessionContext.requireUser();
+        return Result.ok(productService.detailMine(currentUser, id));
+    }
+
     @PostMapping
     public Result<Product> publish(@Valid @RequestBody ProductRequest request) {
         CurrentUser currentUser = SessionContext.requireUser();
