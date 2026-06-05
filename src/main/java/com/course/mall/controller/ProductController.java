@@ -6,8 +6,10 @@ import com.course.mall.common.Result;
 import com.course.mall.common.SessionContext;
 import com.course.mall.dto.ProductRequest;
 import com.course.mall.entity.Product;
+import com.course.mall.service.ProductFavoriteService;
 import com.course.mall.service.ProductService;
 import jakarta.validation.Valid;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -23,9 +25,11 @@ import java.math.BigDecimal;
 @RequestMapping("/api/products")
 public class ProductController {
     private final ProductService productService;
+    private final ProductFavoriteService favoriteService;
 
-    public ProductController(ProductService productService) {
+    public ProductController(ProductService productService, ProductFavoriteService favoriteService) {
         this.productService = productService;
+        this.favoriteService = favoriteService;
     }
 
     @GetMapping
@@ -50,6 +54,13 @@ public class ProductController {
         return Result.ok(productService.pageMine(currentUser, page, size, itemStatus));
     }
 
+    @GetMapping("/favorites")
+    public Result<Page<Product>> favorites(@RequestParam(defaultValue = "1") long page,
+                                           @RequestParam(defaultValue = "8") long size) {
+        CurrentUser currentUser = SessionContext.requireUser();
+        return Result.ok(favoriteService.pageFavorites(currentUser, page, size));
+    }
+
     @PostMapping
     public Result<Product> publish(@Valid @RequestBody ProductRequest request) {
         CurrentUser currentUser = SessionContext.requireUser();
@@ -59,6 +70,26 @@ public class ProductController {
     @GetMapping("/{id}")
     public Result<Product> detail(@PathVariable Long id) {
         return Result.ok(productService.detail(id, false));
+    }
+
+    @GetMapping("/{id}/favorite")
+    public Result<Boolean> favoriteStatus(@PathVariable Long id) {
+        CurrentUser currentUser = SessionContext.requireUser();
+        return Result.ok(favoriteService.isFavorite(currentUser, id));
+    }
+
+    @PostMapping("/{id}/favorite")
+    public Result<Void> favorite(@PathVariable Long id) {
+        CurrentUser currentUser = SessionContext.requireUser();
+        favoriteService.favorite(currentUser, id);
+        return Result.ok();
+    }
+
+    @DeleteMapping("/{id}/favorite")
+    public Result<Void> cancelFavorite(@PathVariable Long id) {
+        CurrentUser currentUser = SessionContext.requireUser();
+        favoriteService.cancel(currentUser, id);
+        return Result.ok();
     }
 
     @PutMapping("/{id}/off-shelf")

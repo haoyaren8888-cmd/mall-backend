@@ -57,6 +57,16 @@ CALL add_index_if_missing('product', 'idx_product_seller', 'KEY idx_product_sell
 CALL add_index_if_missing('product', 'idx_product_audit', 'KEY idx_product_audit (audit_status)');
 CALL add_index_if_missing('product', 'idx_product_campus', 'KEY idx_product_campus (campus)');
 
+CREATE TABLE IF NOT EXISTS product_favorite (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  user_id BIGINT NOT NULL,
+  product_id BIGINT NOT NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uk_favorite_user_product (user_id, product_id),
+  KEY idx_favorite_user (user_id),
+  KEY idx_favorite_product (product_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 DROP PROCEDURE add_column_if_missing;
 DROP PROCEDURE add_index_if_missing;
 
