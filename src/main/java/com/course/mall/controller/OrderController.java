@@ -36,6 +36,13 @@ public class OrderController {
         return Result.ok(orderService.list(page, size, status));
     }
 
+    @GetMapping("/sales")
+    public Result<Page<OrderVO>> sellerList(@RequestParam(defaultValue = "1") long page,
+                                            @RequestParam(defaultValue = "10") long size,
+                                            @RequestParam(required = false) String status) {
+        return Result.ok(orderService.sellerList(page, size, status));
+    }
+
     @GetMapping("/{orderNo}")
     public Result<OrderVO> detail(@PathVariable String orderNo) {
         return Result.ok(orderService.detail(orderNo));

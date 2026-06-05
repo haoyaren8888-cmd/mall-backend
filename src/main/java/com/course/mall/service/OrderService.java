@@ -110,6 +110,38 @@ public class OrderService {
         return voPage;
     }
 
+    public Page<OrderVO> sellerList(long page, long size, String status) {
+        Long sellerId = SessionContext.requireUser().getId();
+        List<Long> productIds = productMapper.selectList(new LambdaQueryWrapper<Product>()
+                        .eq(Product::getSellerId, sellerId))
+                .stream()
+                .map(Product::getId)
+                .toList();
+        if (productIds.isEmpty()) {
+            return emptyOrderPage(page, size);
+        }
+
+        List<Long> orderIds = orderItemMapper.selectList(new LambdaQueryWrapper<OrderItem>()
+                        .in(OrderItem::getProductId, productIds))
+                .stream()
+                .map(OrderItem::getOrderId)
+                .distinct()
+                .toList();
+        if (orderIds.isEmpty()) {
+            return emptyOrderPage(page, size);
+        }
+
+        Page<Order> orderPage = orderMapper.selectPage(Page.of(page, size), new LambdaQueryWrapper<Order>()
+                .in(Order::getId, orderIds)
+                .eq(StringUtils.hasText(status), Order::getStatus, status)
+                .orderByDesc(Order::getCreatedAt));
+        Page<OrderVO> voPage = Page.of(page, size, orderPage.getTotal());
+        voPage.setRecords(orderPage.getRecords().stream()
+                .map(order -> toSellerVO(order, productIds))
+                .toList());
+        return voPage;
+    }
+
     public OrderVO detail(String orderNo) {
         Long userId = SessionContext.requireUser().getId();
         Order order = orderMapper.selectOne(new LambdaQueryWrapper<Order>()
@@ -275,6 +307,27 @@ public class OrderService {
 
     private int salesOf(Product product) {
         return product.getSales() == null ? 0 : product.getSales();
+    }
+
+    private Page<OrderVO> emptyOrderPage(long page, long size) {
+        Page<OrderVO> voPage = Page.of(page, size, 0);
+        voPage.setRecords(List.of());
+        return voPage;
+    }
+
+    private OrderVO toSellerVO(Order order, List<Long> productIds) {
+        OrderVO vo = OrderVO.from(order);
+        List<OrderItemVO> items = orderItemMapper.selectList(new LambdaQueryWrapper<OrderItem>()
+                        .eq(OrderItem::getOrderId, order.getId())
+                        .in(OrderItem::getProductId, productIds))
+                .stream()
+                .map(OrderItemVO::from)
+                .toList();
+        vo.setItems(items);
+        vo.setTotalAmount(items.stream()
+                .map(OrderItemVO::getSubtotal)
+                .reduce(BigDecimal.ZERO, BigDecimal::add));
+        return vo;
     }
 
     private OrderVO toVO(Order order) {
