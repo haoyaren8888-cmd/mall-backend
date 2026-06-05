@@ -79,6 +79,22 @@ CREATE TABLE IF NOT EXISTS product_message (
   KEY idx_message_status (status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+CREATE TABLE IF NOT EXISTS product_review (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  product_id BIGINT NOT NULL,
+  order_id BIGINT NOT NULL,
+  order_item_id BIGINT NOT NULL,
+  user_id BIGINT NOT NULL,
+  rating INT NOT NULL,
+  content VARCHAR(500) NOT NULL,
+  status VARCHAR(20) NOT NULL DEFAULT 'ON',
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uk_review_order_product_user (order_id, product_id, user_id),
+  KEY idx_review_product (product_id),
+  KEY idx_review_user (user_id),
+  KEY idx_review_status (status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 DROP PROCEDURE add_column_if_missing;
 DROP PROCEDURE add_index_if_missing;
 

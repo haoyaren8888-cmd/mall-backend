@@ -6,11 +6,14 @@ import com.course.mall.common.Result;
 import com.course.mall.common.SessionContext;
 import com.course.mall.dto.ProductMessageRequest;
 import com.course.mall.dto.ProductRequest;
+import com.course.mall.dto.ProductReviewRequest;
 import com.course.mall.entity.Product;
 import com.course.mall.service.ProductFavoriteService;
 import com.course.mall.service.ProductMessageService;
+import com.course.mall.service.ProductReviewService;
 import com.course.mall.service.ProductService;
 import com.course.mall.vo.ProductMessageVO;
+import com.course.mall.vo.ProductReviewVO;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -30,12 +33,14 @@ public class ProductController {
     private final ProductService productService;
     private final ProductFavoriteService favoriteService;
     private final ProductMessageService messageService;
+    private final ProductReviewService reviewService;
 
     public ProductController(ProductService productService, ProductFavoriteService favoriteService,
-                             ProductMessageService messageService) {
+                             ProductMessageService messageService, ProductReviewService reviewService) {
         this.productService = productService;
         this.favoriteService = favoriteService;
         this.messageService = messageService;
+        this.reviewService = reviewService;
     }
 
     @GetMapping
@@ -102,6 +107,20 @@ public class ProductController {
                                                  @Valid @RequestBody ProductMessageRequest request) {
         CurrentUser currentUser = SessionContext.requireUser();
         return Result.ok(messageService.create(currentUser, id, request));
+    }
+
+    @GetMapping("/{id}/reviews")
+    public Result<Page<ProductReviewVO>> reviews(@PathVariable Long id,
+                                                 @RequestParam(defaultValue = "1") long page,
+                                                 @RequestParam(defaultValue = "5") long size) {
+        return Result.ok(reviewService.pageReviews(id, page, size));
+    }
+
+    @PostMapping("/{id}/reviews")
+    public Result<ProductReviewVO> createReview(@PathVariable Long id,
+                                                @Valid @RequestBody ProductReviewRequest request) {
+        CurrentUser currentUser = SessionContext.requireUser();
+        return Result.ok(reviewService.create(currentUser, id, request));
     }
 
     @GetMapping("/{id}/favorite")
