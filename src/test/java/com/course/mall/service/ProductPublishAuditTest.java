@@ -1,5 +1,6 @@
 package com.course.mall.service;
 
+import com.course.mall.common.BusinessException;
 import com.course.mall.common.CurrentUser;
 import com.course.mall.dto.ProductRequest;
 import com.course.mall.entity.Product;
@@ -13,6 +14,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.math.BigDecimal;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -55,6 +57,41 @@ class ProductPublishAuditTest {
         assertThat(updated.getName()).isEqualTo("Java Web notes");
         assertThat(updated.getPrice()).isEqualByComparingTo("26.00");
         verify(productMapper).updateById(product);
+    }
+
+    @Test
+    void sellerUpdateResubmitsProductForAudit() {
+        ProductService productService = new ProductService(productMapper);
+        Product product = existingProduct();
+        product.setAuditStatus("REJECTED");
+        product.setRejectReason("image is not clear");
+        ProductRequest request = idleRequest();
+        request.setSellerId(99L);
+
+        when(productMapper.selectById(5L)).thenReturn(product);
+
+        Product updated = productService.updateMine(new CurrentUser(18L, "seller", "seller", "USER"), 5L, request);
+
+        assertThat(updated.getSellerId()).isEqualTo(18L);
+        assertThat(updated.getName()).isEqualTo("Java Web notes");
+        assertThat(updated.getAuditStatus()).isEqualTo("PENDING");
+        assertThat(updated.getRejectReason()).isNull();
+        assertThat(updated.getStatus()).isEqualTo("ON");
+        assertThat(updated.getItemStatus()).isEqualTo("ON_SALE");
+        verify(productMapper).updateById(product);
+    }
+
+    @Test
+    void sellerUpdateRejectsOtherSellerProduct() {
+        ProductService productService = new ProductService(productMapper);
+        Product product = existingProduct();
+
+        when(productMapper.selectById(5L)).thenReturn(product);
+
+        assertThatThrownBy(() ->
+                productService.updateMine(new CurrentUser(99L, "other", "other", "USER"), 5L, idleRequest()))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("只能修改自己发布的闲置商品");
     }
 
     @Test

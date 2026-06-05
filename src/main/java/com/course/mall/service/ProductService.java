@@ -101,6 +101,24 @@ public class ProductService {
         return productMapper.selectPage(Page.of(page, size), wrapper);
     }
 
+    public Product updateMine(CurrentUser currentUser, Long id, ProductRequest request) {
+        Product product = requireProduct(id);
+        if (!currentUser.getId().equals(product.getSellerId())) {
+            throw BusinessException.forbidden("只能修改自己发布的闲置商品");
+        }
+        if ("SOLD".equals(product.getItemStatus())) {
+            throw BusinessException.badRequest("已成交商品不能修改");
+        }
+        fill(product, request);
+        product.setSellerId(currentUser.getId());
+        product.setAuditStatus("PENDING");
+        product.setRejectReason(null);
+        product.setStatus("ON");
+        product.setItemStatus("ON_SALE");
+        productMapper.updateById(product);
+        return product;
+    }
+
     public Product update(Long id, ProductRequest request) {
         Product product = productMapper.selectById(id);
         if (product == null) {

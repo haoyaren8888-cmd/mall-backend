@@ -73,6 +73,12 @@ public class ProductController {
         return Result.ok(productService.publish(currentUser, request));
     }
 
+    @PutMapping("/{id}")
+    public Result<Product> updateMine(@PathVariable Long id, @Valid @RequestBody ProductRequest request) {
+        CurrentUser currentUser = SessionContext.requireUser();
+        return Result.ok(productService.updateMine(currentUser, id, request));
+    }
+
     @GetMapping("/{id}")
     public Result<Product> detail(@PathVariable Long id) {
         return Result.ok(productService.detail(id, false));
