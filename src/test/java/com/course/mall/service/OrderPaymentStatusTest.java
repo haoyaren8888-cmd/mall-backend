@@ -3,7 +3,9 @@ package com.course.mall.service;
 import com.course.mall.common.CurrentUser;
 import com.course.mall.common.SessionKeys;
 import com.course.mall.entity.Order;
+import com.course.mall.entity.OrderItem;
 import com.course.mall.entity.PaymentRecord;
+import com.course.mall.entity.Product;
 import com.course.mall.mapper.AddressMapper;
 import com.course.mall.mapper.CartItemMapper;
 import com.course.mall.mapper.OrderItemMapper;
@@ -77,6 +79,34 @@ class OrderPaymentStatusTest {
         assertThat(record.getPaidAt()).isNotNull();
     }
 
+    @Test
+    void finishChangesShippedOrderToFinishedAndMarksSoldProduct() {
+        loginAsUser(10L);
+        OrderService orderService = new OrderService(
+                orderMapper, orderItemMapper, cartItemMapper, productMapper, addressMapper, paymentRecordMapper);
+        Order order = shippedOrder();
+        OrderItem item = new OrderItem();
+        item.setProductId(88L);
+        Product product = new Product();
+        product.setId(88L);
+        product.setStock(0);
+        product.setStatus("ON");
+        product.setItemStatus("ON_SALE");
+
+        when(orderMapper.selectOne(any())).thenReturn(order);
+        when(orderItemMapper.selectList(any())).thenReturn(List.of(item));
+        when(productMapper.selectById(88L)).thenReturn(product);
+
+        OrderVO result = orderService.finish("M202606020002");
+
+        assertThat(result.getStatus()).isEqualTo("FINISHED");
+        assertThat(order.getStatus()).isEqualTo("FINISHED");
+        assertThat(product.getStatus()).isEqualTo("OFF");
+        assertThat(product.getItemStatus()).isEqualTo("SOLD");
+        verify(orderMapper).updateById(order);
+        verify(productMapper).updateById(product);
+    }
+
     private void loginAsUser(Long userId) {
         MockHttpServletRequest request = new MockHttpServletRequest();
         HttpSession session = request.getSession(true);
@@ -90,6 +120,16 @@ class OrderPaymentStatusTest {
         order.setUserId(10L);
         order.setOrderNo("M202606020001");
         order.setStatus("PENDING_PAY");
+        order.setTotalAmount(new BigDecimal("199.80"));
+        return order;
+    }
+
+    private Order shippedOrder() {
+        Order order = new Order();
+        order.setId(100L);
+        order.setUserId(10L);
+        order.setOrderNo("M202606020002");
+        order.setStatus("SHIPPED");
         order.setTotalAmount(new BigDecimal("199.80"));
         return order;
     }

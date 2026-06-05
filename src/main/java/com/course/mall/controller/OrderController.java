@@ -44,4 +44,9 @@ public class OrderController {
     public Result<OrderVO> cancel(@PathVariable String orderNo) {
         return Result.ok(orderService.cancel(orderNo));
     }
+
+    @PutMapping("/{orderNo}/finish")
+    public Result<OrderVO> finish(@PathVariable String orderNo) {
+        return Result.ok(orderService.finish(orderNo));
+    }
 }

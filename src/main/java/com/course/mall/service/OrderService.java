@@ -139,6 +139,25 @@ public class OrderService {
     }
 
     @Transactional
+    public OrderVO finish(String orderNo) {
+        Long userId = SessionContext.requireUser().getId();
+        Order order = orderMapper.selectOne(new LambdaQueryWrapper<Order>()
+                .eq(Order::getOrderNo, orderNo)
+                .eq(Order::getUserId, userId));
+        if (order == null) {
+            throw BusinessException.notFound("订单不存在");
+        }
+        if (!"SHIPPED".equals(order.getStatus())) {
+            throw BusinessException.badRequest("只有已交付交易可以确认完成");
+        }
+
+        order.setStatus("FINISHED");
+        orderMapper.updateById(order);
+        markSoldProducts(order.getId());
+        return toVO(order);
+    }
+
+    @Transactional
     public OrderVO mockPay(String orderNo) {
         Long userId = SessionContext.requireUser().getId();
         Order order = orderMapper.selectOne(new LambdaQueryWrapper<Order>()
@@ -200,6 +219,19 @@ public class OrderService {
         order.setStatus("SHIPPED");
         orderMapper.updateById(order);
         return toVO(order);
+    }
+
+    private void markSoldProducts(Long orderId) {
+        List<OrderItem> items = orderItemMapper.selectList(new LambdaQueryWrapper<OrderItem>()
+                .eq(OrderItem::getOrderId, orderId));
+        for (OrderItem item : items) {
+            Product product = productMapper.selectById(item.getProductId());
+            if (product != null && stockOf(product) <= 0) {
+                product.setItemStatus("SOLD");
+                product.setStatus("OFF");
+                productMapper.updateById(product);
+            }
+        }
     }
 
     private void restoreStock(Long orderId) {
