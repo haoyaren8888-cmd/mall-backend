@@ -94,6 +94,43 @@ class OrderSellerListTest {
     }
 
     @Test
+    void sellerDetailOnlyReturnsSellerOrderItems() {
+        loginAsUser(10L);
+        OrderService orderService = orderService();
+        Order order = order(99L, "M1001");
+        OrderItem sellerItem = orderItem(99L, 30L, "keyboard", "89.00", 2);
+        OrderItem otherItem = orderItem(99L, 31L, "book", "25.00", 1);
+
+        when(orderMapper.selectOne(any())).thenReturn(order);
+        when(orderItemMapper.selectList(any())).thenReturn(List.of(sellerItem, otherItem), List.of(sellerItem));
+        when(productMapper.selectById(30L)).thenReturn(product(30L, 10L));
+        when(productMapper.selectById(31L)).thenReturn(product(31L, 20L));
+
+        OrderVO result = orderService.sellerDetail("M1001");
+
+        assertThat(result.getOrderNo()).isEqualTo("M1001");
+        assertThat(result.getTotalAmount()).isEqualByComparingTo("178.00");
+        assertThat(result.getItems()).hasSize(1);
+        assertThat(result.getItems().get(0).getProductId()).isEqualTo(30L);
+    }
+
+    @Test
+    void sellerDetailRejectsUnrelatedOrder() {
+        loginAsUser(10L);
+        OrderService orderService = orderService();
+        Order order = order(99L, "M1001");
+        OrderItem otherItem = orderItem(99L, 31L, "book", "25.00", 1);
+
+        when(orderMapper.selectOne(any())).thenReturn(order);
+        when(orderItemMapper.selectList(any())).thenReturn(List.of(otherItem));
+        when(productMapper.selectById(31L)).thenReturn(product(31L, 20L));
+
+        assertThatThrownBy(() -> orderService.sellerDetail("M1001"))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("订单不存在");
+    }
+
+    @Test
     void sellerShipMarksPaidOrderAsShipped() {
         loginAsUser(10L);
         OrderService orderService = orderService();

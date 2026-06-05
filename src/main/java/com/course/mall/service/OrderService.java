@@ -142,6 +142,22 @@ public class OrderService {
         return voPage;
     }
 
+    public OrderVO sellerDetail(String orderNo) {
+        Long sellerId = SessionContext.requireUser().getId();
+        Order order = orderMapper.selectOne(new LambdaQueryWrapper<Order>().eq(Order::getOrderNo, orderNo));
+        if (order == null) {
+            throw BusinessException.notFound("订单不存在");
+        }
+
+        List<OrderItem> items = orderItemMapper.selectList(new LambdaQueryWrapper<OrderItem>()
+                .eq(OrderItem::getOrderId, order.getId()));
+        List<Long> productIds = findSellerProductIds(sellerId, items);
+        if (productIds.isEmpty()) {
+            throw BusinessException.notFound("订单不存在");
+        }
+        return toSellerVO(order, productIds);
+    }
+
     @Transactional
     public OrderVO sellerShip(String orderNo) {
         Long sellerId = SessionContext.requireUser().getId();
@@ -330,6 +346,17 @@ public class OrderService {
 
     private int salesOf(Product product) {
         return product.getSales() == null ? 0 : product.getSales();
+    }
+
+    private List<Long> findSellerProductIds(Long sellerId, List<OrderItem> items) {
+        return items.stream()
+                .map(OrderItem::getProductId)
+                .distinct()
+                .filter(productId -> {
+                    Product product = productMapper.selectById(productId);
+                    return product != null && sellerId.equals(product.getSellerId());
+                })
+                .toList();
     }
 
     private List<Long> requireSellerOwnsOrder(Long sellerId, List<OrderItem> items) {

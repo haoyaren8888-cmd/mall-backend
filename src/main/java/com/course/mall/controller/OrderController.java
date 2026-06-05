@@ -43,6 +43,11 @@ public class OrderController {
         return Result.ok(orderService.sellerList(page, size, status));
     }
 
+    @GetMapping("/sales/{orderNo}")
+    public Result<OrderVO> sellerDetail(@PathVariable String orderNo) {
+        return Result.ok(orderService.sellerDetail(orderNo));
+    }
+
     @PutMapping("/sales/{orderNo}/ship")
     public Result<OrderVO> sellerShip(@PathVariable String orderNo) {
         return Result.ok(orderService.sellerShip(orderNo));
