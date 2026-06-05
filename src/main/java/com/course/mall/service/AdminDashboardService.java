@@ -25,6 +25,8 @@ public class AdminDashboardService {
     public AdminStatsVO stats() {
         return new AdminStatsVO(
                 userMapper.selectCount(new LambdaQueryWrapper<User>()),
+                userMapper.selectCount(new LambdaQueryWrapper<User>().eq(User::getStatus, "ENABLED")),
+                userMapper.selectCount(new LambdaQueryWrapper<User>().eq(User::getStatus, "DISABLED")),
                 productMapper.selectCount(new LambdaQueryWrapper<Product>()),
                 orderMapper.selectCount(new LambdaQueryWrapper<Order>()),
                 orderMapper.selectCount(new LambdaQueryWrapper<Order>().eq(Order::getStatus, "PENDING_PAY"))
