@@ -13,6 +13,7 @@ import com.course.mall.mapper.OrderMapper;
 import com.course.mall.mapper.PaymentRecordMapper;
 import com.course.mall.mapper.ProductMapper;
 import com.course.mall.vo.OrderVO;
+import com.course.mall.vo.PaymentRecordVO;
 import jakarta.servlet.http.HttpSession;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -107,6 +108,31 @@ class OrderPaymentStatusTest {
         verify(productMapper).updateById(product);
     }
 
+    @Test
+    void paymentRecordOnlyReturnsCurrentUserOrderPayment() {
+        loginAsUser(10L);
+        OrderService orderService = new OrderService(
+                orderMapper, orderItemMapper, cartItemMapper, productMapper, addressMapper, paymentRecordMapper);
+        Order order = paidOrder();
+        PaymentRecord record = new PaymentRecord();
+        record.setOrderNo("M202606020003");
+        record.setPayNo("PAY202606020003");
+        record.setPayType("MOCK");
+        record.setStatus("SUCCESS");
+        record.setAmount(new BigDecimal("199.80"));
+
+        when(orderMapper.selectOne(any())).thenReturn(order);
+        when(paymentRecordMapper.selectOne(any())).thenReturn(record);
+
+        PaymentRecordVO result = orderService.paymentRecord("M202606020003");
+
+        assertThat(result.getOrderNo()).isEqualTo("M202606020003");
+        assertThat(result.getPayNo()).isEqualTo("PAY202606020003");
+        assertThat(result.getPayType()).isEqualTo("MOCK");
+        assertThat(result.getStatus()).isEqualTo("SUCCESS");
+        assertThat(result.getAmount()).isEqualByComparingTo("199.80");
+    }
+
     private void loginAsUser(Long userId) {
         MockHttpServletRequest request = new MockHttpServletRequest();
         HttpSession session = request.getSession(true);
@@ -130,6 +156,16 @@ class OrderPaymentStatusTest {
         order.setUserId(10L);
         order.setOrderNo("M202606020002");
         order.setStatus("SHIPPED");
+        order.setTotalAmount(new BigDecimal("199.80"));
+        return order;
+    }
+
+    private Order paidOrder() {
+        Order order = new Order();
+        order.setId(101L);
+        order.setUserId(10L);
+        order.setOrderNo("M202606020003");
+        order.setStatus("PAID");
         order.setTotalAmount(new BigDecimal("199.80"));
         return order;
     }

@@ -19,6 +19,7 @@ import com.course.mall.mapper.PaymentRecordMapper;
 import com.course.mall.mapper.ProductMapper;
 import com.course.mall.vo.OrderItemVO;
 import com.course.mall.vo.OrderVO;
+import com.course.mall.vo.PaymentRecordVO;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -246,6 +247,22 @@ public class OrderService {
         order.setPaidAt(now);
         orderMapper.updateById(order);
         return toVO(order);
+    }
+
+    public PaymentRecordVO paymentRecord(String orderNo) {
+        Long userId = SessionContext.requireUser().getId();
+        Order order = orderMapper.selectOne(new LambdaQueryWrapper<Order>()
+                .eq(Order::getOrderNo, orderNo)
+                .eq(Order::getUserId, userId));
+        if (order == null) {
+            throw BusinessException.notFound("订单不存在");
+        }
+        PaymentRecord record = paymentRecordMapper.selectOne(new LambdaQueryWrapper<PaymentRecord>()
+                .eq(PaymentRecord::getOrderNo, orderNo)
+                .orderByDesc(PaymentRecord::getPaidAt)
+                .orderByDesc(PaymentRecord::getCreatedAt)
+                .last("limit 1"));
+        return PaymentRecordVO.from(record);
     }
 
     private void requirePayableOrder(Order order) {
