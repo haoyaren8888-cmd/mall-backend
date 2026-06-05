@@ -4,6 +4,7 @@ import com.course.mall.common.BusinessException;
 import com.course.mall.common.CurrentUser;
 import com.course.mall.common.SessionKeys;
 import com.course.mall.dto.CartItemRequest;
+import com.course.mall.entity.CartItem;
 import com.course.mall.entity.Product;
 import com.course.mall.mapper.CartItemMapper;
 import com.course.mall.mapper.ProductMapper;
@@ -18,8 +19,12 @@ import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -49,11 +54,41 @@ class CartSelfPurchaseTest {
                 .hasMessage("不能购买自己发布的闲置商品");
     }
 
+    @Test
+    void deleteCheckedRemovesSelectedItems() {
+        loginAsUser(10L);
+        CartService cartService = new CartService(cartItemMapper, productMapper);
+        when(cartItemMapper.selectList(any())).thenReturn(List.of(cartItem(1L), cartItem(2L)));
+
+        cartService.deleteChecked();
+
+        verify(cartItemMapper).deleteBatchIds(List.of(1L, 2L));
+    }
+
+    @Test
+    void deleteCheckedSkipsWhenNothingSelected() {
+        loginAsUser(10L);
+        CartService cartService = new CartService(cartItemMapper, productMapper);
+        when(cartItemMapper.selectList(any())).thenReturn(List.of());
+
+        cartService.deleteChecked();
+
+        verify(cartItemMapper, never()).deleteBatchIds(any());
+    }
+
     private void loginAsUser(Long userId) {
         MockHttpServletRequest request = new MockHttpServletRequest();
         HttpSession session = request.getSession(true);
         session.setAttribute(SessionKeys.CURRENT_USER, new CurrentUser(userId, "user", "normal user", "USER"));
         RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(request));
+    }
+
+    private CartItem cartItem(Long id) {
+        CartItem cartItem = new CartItem();
+        cartItem.setId(id);
+        cartItem.setUserId(10L);
+        cartItem.setChecked(true);
+        return cartItem;
     }
 
     private Product product(Long id, Long sellerId) {

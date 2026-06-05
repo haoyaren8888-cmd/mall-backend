@@ -151,6 +151,17 @@ public class CartService {
         cartItemMapper.deleteById(id);
     }
 
+    public void deleteChecked() {
+        Long userId = SessionContext.requireUser().getId();
+        List<CartItem> items = cartItemMapper.selectList(new LambdaQueryWrapper<CartItem>()
+                .eq(CartItem::getUserId, userId)
+                .eq(CartItem::getChecked, true));
+        if (items.isEmpty()) {
+            return;
+        }
+        cartItemMapper.deleteBatchIds(items.stream().map(CartItem::getId).toList());
+    }
+
     public List<CartItemVO> merge(CartMergeRequest request) {
         if (request.getItems() != null) {
             for (CartItemRequest item : request.getItems()) {

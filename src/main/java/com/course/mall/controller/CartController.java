@@ -51,6 +51,12 @@ public class CartController {
         return Result.ok();
     }
 
+    @DeleteMapping("/items/checked")
+    public Result<Void> deleteChecked() {
+        cartService.deleteChecked();
+        return Result.ok();
+    }
+
     @DeleteMapping("/items/{id}")
     public Result<Void> delete(@PathVariable Long id) {
         cartService.delete(id);
