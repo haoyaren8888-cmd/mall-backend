@@ -12,14 +12,18 @@ import com.course.mall.entity.User;
 import com.course.mall.mapper.ProductMapper;
 import com.course.mall.mapper.ProductMessageMapper;
 import com.course.mall.mapper.UserMapper;
+import com.course.mall.vo.AdminMessageVO;
 import com.course.mall.vo.ProductMessageVO;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
+import java.util.Set;
 
 @Service
 public class ProductMessageService {
+    private static final Set<String> ADMIN_MESSAGE_STATUS = Set.of("ON", "HIDDEN");
+
     private final ProductMessageMapper messageMapper;
     private final ProductMapper productMapper;
     private final UserMapper userMapper;
@@ -64,6 +68,52 @@ public class ProductMessageService {
 
         User user = userMapper.selectById(currentUser.getId());
         return ProductMessageVO.from(message, user);
+    }
+
+    public Page<AdminMessageVO> pageAdminMessages(long page, long size, String keyword, String status, Boolean replied) {
+        String messageStatus = StringUtils.hasText(status) ? status.trim() : null;
+        if (messageStatus != null && !ADMIN_MESSAGE_STATUS.contains(messageStatus)) {
+            throw BusinessException.badRequest("留言状态不正确");
+        }
+        String searchText = StringUtils.hasText(keyword) ? keyword.trim() : null;
+
+        LambdaQueryWrapper<ProductMessage> wrapper = new LambdaQueryWrapper<ProductMessage>()
+                .eq(StringUtils.hasText(messageStatus), ProductMessage::getStatus, messageStatus)
+                .and(StringUtils.hasText(searchText), w -> w
+                        .like(ProductMessage::getContent, searchText)
+                        .or()
+                        .like(ProductMessage::getReplyContent, searchText))
+                .and(Boolean.TRUE.equals(replied), w -> w
+                        .isNotNull(ProductMessage::getReplyContent)
+                        .ne(ProductMessage::getReplyContent, ""))
+                .and(Boolean.FALSE.equals(replied), w -> w
+                        .isNull(ProductMessage::getReplyContent)
+                        .or()
+                        .eq(ProductMessage::getReplyContent, ""))
+                .orderByDesc(ProductMessage::getCreatedAt);
+        Page<ProductMessage> messagePage = messageMapper.selectPage(Page.of(page, size), wrapper);
+
+        Page<AdminMessageVO> voPage = Page.of(page, size, messagePage.getTotal());
+        voPage.setRecords(messagePage.getRecords().stream()
+                .map(message -> AdminMessageVO.from(
+                        message,
+                        productMapper.selectById(message.getProductId()),
+                        userMapper.selectById(message.getUserId())))
+                .toList());
+        return voPage;
+    }
+
+    public void updateAdminStatus(Long id, String status) {
+        String messageStatus = status == null ? "" : status.trim();
+        if (!ADMIN_MESSAGE_STATUS.contains(messageStatus)) {
+            throw BusinessException.badRequest("留言状态不正确");
+        }
+        ProductMessage message = messageMapper.selectById(id);
+        if (message == null) {
+            throw BusinessException.notFound("留言不存在");
+        }
+        message.setStatus(messageStatus);
+        messageMapper.updateById(message);
     }
 
     public ProductMessageVO reply(CurrentUser currentUser, Long productId, Long messageId,

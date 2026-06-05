@@ -1,5 +1,6 @@
 package com.course.mall.service;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.course.mall.common.BusinessException;
 import com.course.mall.common.CurrentUser;
 import com.course.mall.dto.ProductMessageReplyRequest;
@@ -9,12 +10,15 @@ import com.course.mall.entity.User;
 import com.course.mall.mapper.ProductMapper;
 import com.course.mall.mapper.ProductMessageMapper;
 import com.course.mall.mapper.UserMapper;
+import com.course.mall.vo.AdminMessageVO;
 import com.course.mall.vo.ProductMessageVO;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -31,6 +35,50 @@ class ProductMessageServiceTest {
     private ProductMapper productMapper;
     @Mock
     private UserMapper userMapper;
+
+    @Test
+    void pageAdminMessagesIncludesProductAndUserInfo() {
+        ProductMessageService service = productMessageService();
+        Page<ProductMessage> messagePage = Page.of(1, 10, 1);
+        ProductMessage message = message();
+        message.setReplyContent("可以今晚面交。");
+        messagePage.setRecords(List.of(message));
+
+        when(messageMapper.selectPage(any(), any())).thenReturn(messagePage);
+        when(productMapper.selectById(20L)).thenReturn(product(20L, 2L));
+        when(userMapper.selectById(3L)).thenReturn(user());
+
+        Page<AdminMessageVO> result = service.pageAdminMessages(1, 10, "面交", "ON", true);
+
+        assertThat(result.getTotal()).isEqualTo(1);
+        assertThat(result.getRecords()).hasSize(1);
+        AdminMessageVO vo = result.getRecords().get(0);
+        assertThat(vo.getProductName()).isEqualTo("二手电脑");
+        assertThat(vo.getNickname()).isEqualTo("赵奎");
+        assertThat(vo.getReplyContent()).isEqualTo("可以今晚面交。");
+    }
+
+    @Test
+    void updateAdminStatusCanHideMessage() {
+        ProductMessageService service = productMessageService();
+        when(messageMapper.selectById(66L)).thenReturn(message());
+
+        service.updateAdminStatus(66L, "HIDDEN");
+
+        ArgumentCaptor<ProductMessage> captor = ArgumentCaptor.forClass(ProductMessage.class);
+        verify(messageMapper).updateById(captor.capture());
+        assertThat(captor.getValue().getStatus()).isEqualTo("HIDDEN");
+    }
+
+    @Test
+    void updateAdminStatusRejectsInvalidStatus() {
+        ProductMessageService service = productMessageService();
+
+        assertThatThrownBy(() -> service.updateAdminStatus(66L, "DELETED"))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("留言状态不正确");
+        verify(messageMapper, never()).updateById(any(ProductMessage.class));
+    }
 
     @Test
     void sellerCanReplyMessage() {
@@ -94,6 +142,7 @@ class ProductMessageServiceTest {
     private Product product(Long id, Long sellerId) {
         Product product = new Product();
         product.setId(id);
+        product.setName("二手电脑");
         product.setSellerId(sellerId);
         product.setStatus("ON");
         product.setAuditStatus("APPROVED");
