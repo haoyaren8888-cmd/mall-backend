@@ -3,6 +3,8 @@ package com.course.mall.vo;
 import com.course.mall.entity.User;
 import lombok.Data;
 
+import java.time.LocalDateTime;
+
 @Data
 public class UserVO {
     private Long id;
@@ -17,6 +19,7 @@ public class UserVO {
     private String status;
     private Integer creditScore;
     private Integer dealCount;
+    private LocalDateTime createdAt;
 
     public static UserVO from(User user) {
         UserVO vo = new UserVO();
@@ -32,6 +35,7 @@ public class UserVO {
         vo.setStatus(user.getStatus());
         vo.setCreditScore(user.getCreditScore());
         vo.setDealCount(user.getDealCount());
+        vo.setCreatedAt(user.getCreatedAt());
         return vo;
     }
 }
