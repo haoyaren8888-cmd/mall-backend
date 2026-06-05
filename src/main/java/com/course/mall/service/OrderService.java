@@ -99,10 +99,11 @@ public class OrderService {
         return detail(order.getOrderNo());
     }
 
-    public Page<OrderVO> list(long page, long size) {
+    public Page<OrderVO> list(long page, long size, String status) {
         Long userId = SessionContext.requireUser().getId();
         Page<Order> orderPage = orderMapper.selectPage(Page.of(page, size), new LambdaQueryWrapper<Order>()
                 .eq(Order::getUserId, userId)
+                .eq(StringUtils.hasText(status), Order::getStatus, status)
                 .orderByDesc(Order::getCreatedAt));
         Page<OrderVO> voPage = Page.of(page, size, orderPage.getTotal());
         voPage.setRecords(orderPage.getRecords().stream().map(this::toVO).toList());

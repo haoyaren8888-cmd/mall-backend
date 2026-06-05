@@ -31,8 +31,9 @@ public class OrderController {
 
     @GetMapping
     public Result<Page<OrderVO>> list(@RequestParam(defaultValue = "1") long page,
-                                      @RequestParam(defaultValue = "10") long size) {
-        return Result.ok(orderService.list(page, size));
+                                      @RequestParam(defaultValue = "10") long size,
+                                      @RequestParam(required = false) String status) {
+        return Result.ok(orderService.list(page, size, status));
     }
 
     @GetMapping("/{orderNo}")
