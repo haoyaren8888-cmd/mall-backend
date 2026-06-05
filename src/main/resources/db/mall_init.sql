@@ -75,6 +75,18 @@ CREATE TABLE IF NOT EXISTS product_favorite (
   KEY idx_favorite_product (product_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+CREATE TABLE IF NOT EXISTS product_message (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  product_id BIGINT NOT NULL,
+  user_id BIGINT NOT NULL,
+  content VARCHAR(300) NOT NULL,
+  status VARCHAR(20) NOT NULL DEFAULT 'ON',
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_message_product (product_id),
+  KEY idx_message_user (user_id),
+  KEY idx_message_status (status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 CREATE TABLE IF NOT EXISTS cart_item (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
   user_id BIGINT NOT NULL,
@@ -227,6 +239,16 @@ ON DUPLICATE KEY UPDATE
   view_count = VALUES(view_count),
   favorite_count = VALUES(favorite_count),
   reject_reason = VALUES(reject_reason);
+
+INSERT INTO product_message (id, product_id, user_id, content, status)
+VALUES
+  (1, 1, 3, '电脑电池续航现在大概能撑多久？可以在行知楼当面试一下吗？', 'ON'),
+  (2, 1, 4, '请问充电器和电脑包都还在吗？', 'ON'),
+  (3, 5, 2, '小冰箱需要自己搬吗？晚上方便看货吗？', 'ON'),
+  (4, 8, 4, '山地车刹车和变速都正常吗？能不能在西门试骑一下？', 'ON')
+ON DUPLICATE KEY UPDATE
+  content = VALUES(content),
+  status = VALUES(status);
 
 INSERT INTO address (id, user_id, receiver_name, receiver_phone, province, city, district, detail, is_default)
 VALUES

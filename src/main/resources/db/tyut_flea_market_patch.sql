@@ -67,6 +67,18 @@ CREATE TABLE IF NOT EXISTS product_favorite (
   KEY idx_favorite_product (product_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+CREATE TABLE IF NOT EXISTS product_message (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  product_id BIGINT NOT NULL,
+  user_id BIGINT NOT NULL,
+  content VARCHAR(300) NOT NULL,
+  status VARCHAR(20) NOT NULL DEFAULT 'ON',
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_message_product (product_id),
+  KEY idx_message_user (user_id),
+  KEY idx_message_status (status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 DROP PROCEDURE add_column_if_missing;
 DROP PROCEDURE add_index_if_missing;
 
@@ -140,3 +152,11 @@ ON DUPLICATE KEY UPDATE
   view_count = VALUES(view_count),
   favorite_count = VALUES(favorite_count),
   reject_reason = VALUES(reject_reason);
+
+INSERT INTO product_message (id, product_id, user_id, content, status)
+VALUES
+  (1, 1, 2, '电脑电池续航现在大概能撑多久？可以在行知楼当面试一下吗？', 'ON'),
+  (2, 5, 2, '小冰箱需要自己搬吗？晚上方便看货吗？', 'ON')
+ON DUPLICATE KEY UPDATE
+  content = VALUES(content),
+  status = VALUES(status);

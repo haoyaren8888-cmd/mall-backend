@@ -4,10 +4,13 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.course.mall.common.CurrentUser;
 import com.course.mall.common.Result;
 import com.course.mall.common.SessionContext;
+import com.course.mall.dto.ProductMessageRequest;
 import com.course.mall.dto.ProductRequest;
 import com.course.mall.entity.Product;
 import com.course.mall.service.ProductFavoriteService;
+import com.course.mall.service.ProductMessageService;
 import com.course.mall.service.ProductService;
+import com.course.mall.vo.ProductMessageVO;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -26,10 +29,13 @@ import java.math.BigDecimal;
 public class ProductController {
     private final ProductService productService;
     private final ProductFavoriteService favoriteService;
+    private final ProductMessageService messageService;
 
-    public ProductController(ProductService productService, ProductFavoriteService favoriteService) {
+    public ProductController(ProductService productService, ProductFavoriteService favoriteService,
+                             ProductMessageService messageService) {
         this.productService = productService;
         this.favoriteService = favoriteService;
+        this.messageService = messageService;
     }
 
     @GetMapping
@@ -70,6 +76,20 @@ public class ProductController {
     @GetMapping("/{id}")
     public Result<Product> detail(@PathVariable Long id) {
         return Result.ok(productService.detail(id, false));
+    }
+
+    @GetMapping("/{id}/messages")
+    public Result<Page<ProductMessageVO>> messages(@PathVariable Long id,
+                                                   @RequestParam(defaultValue = "1") long page,
+                                                   @RequestParam(defaultValue = "5") long size) {
+        return Result.ok(messageService.pageMessages(id, page, size));
+    }
+
+    @PostMapping("/{id}/messages")
+    public Result<ProductMessageVO> leaveMessage(@PathVariable Long id,
+                                                 @Valid @RequestBody ProductMessageRequest request) {
+        CurrentUser currentUser = SessionContext.requireUser();
+        return Result.ok(messageService.create(currentUser, id, request));
     }
 
     @GetMapping("/{id}/favorite")
