@@ -15,6 +15,8 @@ public class ProductMessage {
     private Long productId;
     private Long userId;
     private String content;
+    private String replyContent;
     private String status;
     private LocalDateTime createdAt;
+    private LocalDateTime replyAt;
 }

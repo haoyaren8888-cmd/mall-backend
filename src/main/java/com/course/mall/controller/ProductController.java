@@ -5,6 +5,7 @@ import com.course.mall.common.CurrentUser;
 import com.course.mall.common.Result;
 import com.course.mall.common.SessionContext;
 import com.course.mall.dto.ProductMessageRequest;
+import com.course.mall.dto.ProductMessageReplyRequest;
 import com.course.mall.dto.ProductRequest;
 import com.course.mall.dto.ProductReviewRequest;
 import com.course.mall.entity.Product;
@@ -107,6 +108,14 @@ public class ProductController {
                                                  @Valid @RequestBody ProductMessageRequest request) {
         CurrentUser currentUser = SessionContext.requireUser();
         return Result.ok(messageService.create(currentUser, id, request));
+    }
+
+    @PutMapping("/{id}/messages/{messageId}/reply")
+    public Result<ProductMessageVO> replyMessage(@PathVariable Long id,
+                                                 @PathVariable Long messageId,
+                                                 @Valid @RequestBody ProductMessageReplyRequest request) {
+        CurrentUser currentUser = SessionContext.requireUser();
+        return Result.ok(messageService.reply(currentUser, id, messageId, request));
     }
 
     @GetMapping("/{id}/reviews")

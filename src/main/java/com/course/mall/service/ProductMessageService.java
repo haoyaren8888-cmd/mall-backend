@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.course.mall.common.BusinessException;
 import com.course.mall.common.CurrentUser;
 import com.course.mall.dto.ProductMessageRequest;
+import com.course.mall.dto.ProductMessageReplyRequest;
 import com.course.mall.entity.Product;
 import com.course.mall.entity.ProductMessage;
 import com.course.mall.entity.User;
@@ -14,6 +15,8 @@ import com.course.mall.mapper.UserMapper;
 import com.course.mall.vo.ProductMessageVO;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
+
+import java.time.LocalDateTime;
 
 @Service
 public class ProductMessageService {
@@ -63,12 +66,41 @@ public class ProductMessageService {
         return ProductMessageVO.from(message, user);
     }
 
-    private void requirePublicProduct(Long productId) {
+    public ProductMessageVO reply(CurrentUser currentUser, Long productId, Long messageId,
+                                  ProductMessageReplyRequest request) {
+        Product product = requirePublicProduct(productId);
+        if (!currentUser.getId().equals(product.getSellerId())) {
+            throw BusinessException.forbidden("只有卖家可以回复留言");
+        }
+
+        ProductMessage message = messageMapper.selectOne(new LambdaQueryWrapper<ProductMessage>()
+                .eq(ProductMessage::getId, messageId)
+                .eq(ProductMessage::getProductId, productId)
+                .eq(ProductMessage::getStatus, "ON"));
+        if (message == null) {
+            throw BusinessException.notFound("留言不存在");
+        }
+
+        String content = request.getReplyContent() == null ? "" : request.getReplyContent().trim();
+        if (!StringUtils.hasText(content)) {
+            throw BusinessException.badRequest("回复内容不能为空");
+        }
+
+        message.setReplyContent(content);
+        message.setReplyAt(LocalDateTime.now());
+        messageMapper.updateById(message);
+
+        User user = userMapper.selectById(message.getUserId());
+        return ProductMessageVO.from(message, user);
+    }
+
+    private Product requirePublicProduct(Long productId) {
         Product product = productMapper.selectById(productId);
         if (product == null || !"ON".equals(product.getStatus()) ||
                 !"APPROVED".equals(product.getAuditStatus()) ||
                 !"ON_SALE".equals(product.getItemStatus())) {
             throw BusinessException.notFound("闲置商品不存在或暂未通过审核");
         }
+        return product;
     }
 }

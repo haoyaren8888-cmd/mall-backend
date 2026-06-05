@@ -80,8 +80,10 @@ CREATE TABLE IF NOT EXISTS product_message (
   product_id BIGINT NOT NULL,
   user_id BIGINT NOT NULL,
   content VARCHAR(300) NOT NULL,
+  reply_content VARCHAR(300) NULL,
   status VARCHAR(20) NOT NULL DEFAULT 'ON',
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  reply_at DATETIME NULL,
   KEY idx_message_product (product_id),
   KEY idx_message_user (user_id),
   KEY idx_message_status (status)
@@ -256,14 +258,15 @@ ON DUPLICATE KEY UPDATE
   favorite_count = VALUES(favorite_count),
   reject_reason = VALUES(reject_reason);
 
-INSERT INTO product_message (id, product_id, user_id, content, status)
+INSERT INTO product_message (id, product_id, user_id, content, reply_content, status)
 VALUES
-  (1, 1, 3, '电脑电池续航现在大概能撑多久？可以在行知楼当面试一下吗？', 'ON'),
-  (2, 1, 4, '请问充电器和电脑包都还在吗？', 'ON'),
-  (3, 5, 2, '小冰箱需要自己搬吗？晚上方便看货吗？', 'ON'),
-  (4, 8, 4, '山地车刹车和变速都正常吗？能不能在西门试骑一下？', 'ON')
+  (1, 1, 3, '电脑电池续航现在大概能撑多久？可以在行知楼当面试一下吗？', '续航大概 4 小时，可以在行知楼门口试机。', 'ON'),
+  (2, 1, 4, '请问充电器和电脑包都还在吗？', '都在，电脑包可以一起送。', 'ON'),
+  (3, 5, 2, '小冰箱需要自己搬吗？晚上方便看货吗？', NULL, 'ON'),
+  (4, 8, 4, '山地车刹车和变速都正常吗？能不能在西门试骑一下？', NULL, 'ON')
 ON DUPLICATE KEY UPDATE
   content = VALUES(content),
+  reply_content = VALUES(reply_content),
   status = VALUES(status);
 
 INSERT INTO address (id, user_id, receiver_name, receiver_phone, province, city, district, detail, is_default)

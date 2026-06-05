@@ -72,12 +72,17 @@ CREATE TABLE IF NOT EXISTS product_message (
   product_id BIGINT NOT NULL,
   user_id BIGINT NOT NULL,
   content VARCHAR(300) NOT NULL,
+  reply_content VARCHAR(300) NULL,
   status VARCHAR(20) NOT NULL DEFAULT 'ON',
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  reply_at DATETIME NULL,
   KEY idx_message_product (product_id),
   KEY idx_message_user (user_id),
   KEY idx_message_status (status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CALL add_column_if_missing('product_message', 'reply_content', 'reply_content VARCHAR(300) NULL AFTER content');
+CALL add_column_if_missing('product_message', 'reply_at', 'reply_at DATETIME NULL AFTER created_at');
 
 CREATE TABLE IF NOT EXISTS product_review (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
@@ -169,10 +174,11 @@ ON DUPLICATE KEY UPDATE
   favorite_count = VALUES(favorite_count),
   reject_reason = VALUES(reject_reason);
 
-INSERT INTO product_message (id, product_id, user_id, content, status)
+INSERT INTO product_message (id, product_id, user_id, content, reply_content, status)
 VALUES
-  (1, 1, 2, '电脑电池续航现在大概能撑多久？可以在行知楼当面试一下吗？', 'ON'),
-  (2, 5, 2, '小冰箱需要自己搬吗？晚上方便看货吗？', 'ON')
+  (1, 1, 2, '电脑电池续航现在大概能撑多久？可以在行知楼当面试一下吗？', '续航大概 4 小时，可以在行知楼门口试机。', 'ON'),
+  (2, 5, 2, '小冰箱需要自己搬吗？晚上方便看货吗？', NULL, 'ON')
 ON DUPLICATE KEY UPDATE
   content = VALUES(content),
+  reply_content = VALUES(reply_content),
   status = VALUES(status);
