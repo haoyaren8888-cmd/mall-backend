@@ -12,4 +12,8 @@ public class AdminStatsVO {
     private Long productCount;
     private Long orderCount;
     private Long pendingOrderCount;
+    private Long messageCount;
+    private Long unrepliedMessageCount;
+    private Long reviewCount;
+    private Long hiddenContentCount;
 }
