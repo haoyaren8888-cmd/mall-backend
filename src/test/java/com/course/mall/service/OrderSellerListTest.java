@@ -1,6 +1,7 @@
 package com.course.mall.service;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.course.mall.common.BusinessException;
 import com.course.mall.common.CurrentUser;
 import com.course.mall.common.SessionKeys;
 import com.course.mall.entity.Order;
@@ -28,7 +29,10 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
@@ -87,6 +91,44 @@ class OrderSellerListTest {
         assertThat(result.getTotal()).isZero();
         assertThat(result.getRecords()).isEmpty();
         verifyNoInteractions(orderItemMapper, orderMapper);
+    }
+
+    @Test
+    void sellerShipMarksPaidOrderAsShipped() {
+        loginAsUser(10L);
+        OrderService orderService = orderService();
+        Order order = order(99L, "M1001");
+        OrderItem item = orderItem(99L, 30L, "keyboard", "89.00", 1);
+        Product product = product(30L, 10L);
+
+        when(orderMapper.selectOne(any())).thenReturn(order);
+        when(orderItemMapper.selectList(any())).thenReturn(List.of(item), List.of(item));
+        when(productMapper.selectById(30L)).thenReturn(product);
+
+        OrderVO result = orderService.sellerShip("M1001");
+
+        assertThat(order.getStatus()).isEqualTo("SHIPPED");
+        assertThat(result.getStatus()).isEqualTo("SHIPPED");
+        assertThat(result.getItems()).hasSize(1);
+        verify(orderMapper).updateById(order);
+    }
+
+    @Test
+    void sellerShipRejectsOtherSellerOrder() {
+        loginAsUser(10L);
+        OrderService orderService = orderService();
+        Order order = order(99L, "M1001");
+        OrderItem item = orderItem(99L, 31L, "book", "25.00", 1);
+        Product product = product(31L, 20L);
+
+        when(orderMapper.selectOne(any())).thenReturn(order);
+        when(orderItemMapper.selectList(any())).thenReturn(List.of(item));
+        when(productMapper.selectById(31L)).thenReturn(product);
+
+        assertThatThrownBy(() -> orderService.sellerShip("M1001"))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("只能交付自己发布商品的交易");
+        verify(orderMapper, never()).updateById(any(Order.class));
     }
 
     private OrderService orderService() {

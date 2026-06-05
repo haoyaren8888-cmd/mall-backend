@@ -142,6 +142,29 @@ public class OrderService {
         return voPage;
     }
 
+    @Transactional
+    public OrderVO sellerShip(String orderNo) {
+        Long sellerId = SessionContext.requireUser().getId();
+        Order order = orderMapper.selectOne(new LambdaQueryWrapper<Order>().eq(Order::getOrderNo, orderNo));
+        if (order == null) {
+            throw BusinessException.notFound("订单不存在");
+        }
+        if (!"PAID".equals(order.getStatus())) {
+            throw BusinessException.badRequest("只有已付款交易可以交付");
+        }
+
+        List<OrderItem> items = orderItemMapper.selectList(new LambdaQueryWrapper<OrderItem>()
+                .eq(OrderItem::getOrderId, order.getId()));
+        if (items.isEmpty()) {
+            throw BusinessException.notFound("订单明细不存在");
+        }
+
+        List<Long> productIds = requireSellerOwnsOrder(sellerId, items);
+        order.setStatus("SHIPPED");
+        orderMapper.updateById(order);
+        return toSellerVO(order, productIds);
+    }
+
     public OrderVO detail(String orderNo) {
         Long userId = SessionContext.requireUser().getId();
         Order order = orderMapper.selectOne(new LambdaQueryWrapper<Order>()
@@ -307,6 +330,20 @@ public class OrderService {
 
     private int salesOf(Product product) {
         return product.getSales() == null ? 0 : product.getSales();
+    }
+
+    private List<Long> requireSellerOwnsOrder(Long sellerId, List<OrderItem> items) {
+        List<Long> productIds = items.stream()
+                .map(OrderItem::getProductId)
+                .distinct()
+                .toList();
+        for (Long productId : productIds) {
+            Product product = productMapper.selectById(productId);
+            if (product == null || !sellerId.equals(product.getSellerId())) {
+                throw BusinessException.forbidden("只能交付自己发布商品的交易");
+            }
+        }
+        return productIds;
     }
 
     private Page<OrderVO> emptyOrderPage(long page, long size) {
