@@ -15,13 +15,18 @@ import com.course.mall.mapper.OrderMapper;
 import com.course.mall.mapper.ProductMapper;
 import com.course.mall.mapper.ProductReviewMapper;
 import com.course.mall.mapper.UserMapper;
+import com.course.mall.vo.AdminReviewVO;
 import com.course.mall.vo.ProductReviewVO;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.util.Set;
+
 @Service
 public class ProductReviewService {
+    private static final Set<String> ADMIN_REVIEW_STATUS = Set.of("ON", "HIDDEN");
+
     private final ProductReviewMapper reviewMapper;
     private final ProductMapper productMapper;
     private final OrderMapper orderMapper;
@@ -76,6 +81,40 @@ public class ProductReviewService {
 
         User user = userMapper.selectById(currentUser.getId());
         return ProductReviewVO.from(review, user);
+    }
+
+    public Page<AdminReviewVO> pageAdminReviews(long page, long size, String keyword, String status, Integer rating) {
+        String reviewStatus = StringUtils.hasText(status) ? status.trim() : null;
+        String searchText = StringUtils.hasText(keyword) ? keyword.trim() : null;
+        LambdaQueryWrapper<ProductReview> wrapper = new LambdaQueryWrapper<ProductReview>()
+                .eq(StringUtils.hasText(reviewStatus), ProductReview::getStatus, reviewStatus)
+                .eq(rating != null, ProductReview::getRating, rating)
+                .like(StringUtils.hasText(searchText), ProductReview::getContent, searchText)
+                .orderByDesc(ProductReview::getCreatedAt);
+        Page<ProductReview> reviewPage = reviewMapper.selectPage(Page.of(page, size), wrapper);
+
+        Page<AdminReviewVO> voPage = Page.of(page, size, reviewPage.getTotal());
+        voPage.setRecords(reviewPage.getRecords().stream()
+                .map(review -> AdminReviewVO.from(
+                        review,
+                        productMapper.selectById(review.getProductId()),
+                        orderMapper.selectById(review.getOrderId()),
+                        userMapper.selectById(review.getUserId())))
+                .toList());
+        return voPage;
+    }
+
+    public void updateAdminStatus(Long id, String status) {
+        String reviewStatus = status == null ? "" : status.trim();
+        if (!ADMIN_REVIEW_STATUS.contains(reviewStatus)) {
+            throw BusinessException.badRequest("评价状态不正确");
+        }
+        ProductReview review = reviewMapper.selectById(id);
+        if (review == null) {
+            throw BusinessException.notFound("评价不存在");
+        }
+        review.setStatus(reviewStatus);
+        reviewMapper.updateById(review);
     }
 
     private void requireProductExists(Long productId) {

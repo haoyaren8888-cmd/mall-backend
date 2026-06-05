@@ -14,6 +14,7 @@ import com.course.mall.mapper.OrderMapper;
 import com.course.mall.mapper.ProductMapper;
 import com.course.mall.mapper.ProductReviewMapper;
 import com.course.mall.mapper.UserMapper;
+import com.course.mall.vo.AdminReviewVO;
 import com.course.mall.vo.ProductReviewVO;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -126,6 +127,52 @@ class ProductReviewServiceTest {
         assertThat(result.getRecords().get(0).getNickname()).isEqualTo("王嘉毅");
     }
 
+    @Test
+    void pageAdminReviewsLoadsProductOrderAndUserInfo() {
+        ProductReviewService service = productReviewService();
+        ProductReview review = existingReview();
+        Page<ProductReview> reviewPage = Page.of(1, 10, 1);
+        reviewPage.setRecords(List.of(review));
+
+        when(reviewMapper.selectPage(any(), any())).thenReturn(reviewPage);
+        when(productMapper.selectById(30L)).thenReturn(product(30L));
+        when(orderMapper.selectById(99L)).thenReturn(order("FINISHED"));
+        when(userMapper.selectById(10L)).thenReturn(user());
+
+        Page<AdminReviewVO> result = service.pageAdminReviews(1, 10, "成色", "ON", 5);
+
+        assertThat(result.getTotal()).isEqualTo(1);
+        assertThat(result.getRecords()).hasSize(1);
+        AdminReviewVO reviewVO = result.getRecords().get(0);
+        assertThat(reviewVO.getProductName()).isEqualTo("Java Web notes");
+        assertThat(reviewVO.getOrderNo()).isEqualTo("M1001");
+        assertThat(reviewVO.getUsername()).isEqualTo("buyer");
+        assertThat(reviewVO.getStatus()).isEqualTo("ON");
+    }
+
+    @Test
+    void updateAdminStatusCanHideReview() {
+        ProductReviewService service = productReviewService();
+        ProductReview review = existingReview();
+
+        when(reviewMapper.selectById(66L)).thenReturn(review);
+
+        service.updateAdminStatus(66L, "HIDDEN");
+
+        assertThat(review.getStatus()).isEqualTo("HIDDEN");
+        verify(reviewMapper).updateById(review);
+    }
+
+    @Test
+    void updateAdminStatusRejectsInvalidStatus() {
+        ProductReviewService service = productReviewService();
+
+        assertThatThrownBy(() -> service.updateAdminStatus(66L, "DELETED"))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("评价状态不正确");
+        verify(reviewMapper, never()).updateById(any(ProductReview.class));
+    }
+
     private ProductReviewService productReviewService() {
         return new ProductReviewService(reviewMapper, productMapper, orderMapper, orderItemMapper, userMapper);
     }
@@ -182,6 +229,7 @@ class ProductReviewServiceTest {
     private User user() {
         User user = new User();
         user.setId(10L);
+        user.setUsername("buyer");
         user.setNickname("王嘉毅");
         user.setCampus("明向校区");
         return user;
